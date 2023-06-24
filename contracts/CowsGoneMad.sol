@@ -102,6 +102,14 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
       }
     }
   }
+
+  function burn(uint256 tokenId) public virtual {
+    require(
+      _isApprovedOrOwner(_msgSender(), tokenId),
+      "ERC721: caller is not token owner or approved"
+    );
+    _burn(tokenId);
+  }
   
   // VIEW FUNCTIONS
   function isWhitelisted(address _user) public view returns (bool) {

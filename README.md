@@ -16,6 +16,7 @@
 - Mint
   - Mint Single
   - Mint Batch
+- Burn an NFT
 - Reveal NFT's (Owner)
 - Set NFT per address limit (Admin)
 - Set Price (Admin)
