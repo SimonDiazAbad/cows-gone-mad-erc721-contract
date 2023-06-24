@@ -1,6 +1,6 @@
 ## Cows Gone Mad Smart Contract
 
-#### Functionality
+#### Cows Gone Mad Functionality
 
 - Deployment (Owner)
   - Token Name
@@ -10,6 +10,9 @@
 - Admin (Owner)
   - Add Admin Address
   - Remove Admin Address
+- Founder (Admin)
+  - Add Founder Address (Admin)
+  - Remove Founder Address (Admin)
 - Mint
   - Mint Single
   - Mint Batch
@@ -35,3 +38,10 @@
 - Check if address is whitelisted
 - Check if address is a founder
 - View all owner's tokens
+
+#### Additional Functionality provided by openzeppelin
+
+- Ownable contract
+  - Check the owner address
+  - Transfer Ownership
+  - Renounce Ownership

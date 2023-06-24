@@ -22,12 +22,12 @@ contract Admin is Ownable {
     _;
   }
 
-  function addAdmin(address _toAdd) onlyOwner public {
+  function addAdmin(address _toAdd) onlyAdmin public {
     require(_toAdd != address(0));
     admin[_toAdd] = true;
   }
 
-  function removeAdmin(address _toRemove) onlyOwner public {
+  function removeAdmin(address _toRemove) onlyAdmin public {
     require(_toRemove != address(0));
     require(_toRemove != msg.sender);
     admin[_toRemove] = false;
@@ -80,7 +80,7 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
     uint256 supply = totalSupply();
     require(supply + _mintAmount <= maxSupply, "max NFT limit exceeded");
     uint _price;
-    
+
     if (isFounder(to)) {
       _price = foundersPrice;
     } else if (isWhitelisted(to)) {
@@ -162,7 +162,7 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
   }
 
   //only owner
-  function reveal() public onlyOwner {
+  function reveal() public onlyAdmin {
       revealed = true;
   }
   
@@ -182,15 +182,15 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
     maxMintAmount = _newmaxMintAmount;
   }
 
-  function setBaseURI(string memory _newBaseURI) public onlyOwner {
+  function setBaseURI(string memory _newBaseURI) public onlyAdmin {
     baseURI = _newBaseURI;
   }
 
-  function setBaseExtension(string memory _newBaseExtension) public onlyOwner {
+  function setBaseExtension(string memory _newBaseExtension) public onlyAdmin {
     baseExtension = _newBaseExtension;
   }
   
-  function setNotRevealedURI(string memory _notRevealedURI) public onlyOwner {
+  function setNotRevealedURI(string memory _notRevealedURI) public onlyAdmin {
     notRevealedUri = _notRevealedURI;
   }
 
@@ -198,7 +198,7 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
     paused = _state;
   }
 
-  function addFounders(address[] calldata _users) public onlyOwner {
+  function addFounders(address[] calldata _users) public onlyAdmin {
     for (uint256 i = 0; i < _users.length; ) {
       founders[_users[i]] = true;
       unchecked {
@@ -207,7 +207,7 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
     }
   }
 
-  function removeFounders(address[] calldata _users) public onlyOwner {
+  function removeFounders(address[] calldata _users) public onlyAdmin {
     for (uint256 i = 0; i < _users.length; ) {
       founders[_users[i]] = false;
       unchecked {
