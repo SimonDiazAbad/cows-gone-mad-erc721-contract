@@ -75,7 +75,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       }), 'Max mint amount per session exceeded');
     });
 
-    it('should let us that there are insufficient funds', async () => {
+    it('should let us know that there are insufficient funds', async () => {
       await cowsgonemad.pause(false)
       await expectRevert(cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
