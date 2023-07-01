@@ -49,11 +49,13 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
   uint256 public maxSupply = 9999;
   uint256 public maxMintAmount = 100;
   uint256 public nftPerAddressLimit = 100;
+  uint256 public founderNftPerAddressLimit = 5;
   bool public paused = true;
   bool public revealed = false;
   mapping(address => bool) public whitelistedAddresses;
   mapping(address => uint256) public addressMintedBalance;
   mapping(address => bool) public founders;
+  mapping(address => uint256) public foundersMintedBalance;
 
   constructor(
     string memory _name,
@@ -78,7 +80,12 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
     require(_mintAmount > 0, "You need to mint atleast 1 NFT");
     require(_mintAmount <= maxMintAmount, "Max mint amount per session exceeded");
     uint256 supply = totalSupply();
-    require(supply + _mintAmount <= maxSupply, "max NFT limit exceeded");
+    require(supply + _mintAmount <= maxSupply, "Max NFT limit exceeded");
+    if (isFounder(to)) {
+      require(foundersMintedBalance[to] < founderNftPerAddressLimit, "Founder address NFT limit reached");
+    } else if (to != owner()) {
+      require(addressMintedBalance[to] < nftPerAddressLimit, "This address has reached its NFT limit");
+    }
     uint _price;
 
     if (isFounder(to)) {
@@ -94,8 +101,14 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
     }
 
     for (uint256 i = 1; i <= _mintAmount; i++) {
-      addressMintedBalance[to]++;
-      _safeMint(to, supply + i);
+      if (isFounder(to)) {
+        foundersMintedBalance[to]++;
+        _safeMint(to, supply + i);
+      } else {
+        addressMintedBalance[to]++;
+        _safeMint(to, supply + i);
+      }
+
       unchecked {
         addressMintedBalance[to]++;
         ++i;
@@ -184,6 +197,10 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
 
   function setFoundersPrice(uint256 _newPrice) public onlyAdmin {
     foundersPrice = _newPrice;
+  }
+
+  function setFounderNftLimit(uint256 _nftAmount) public onlyAdmin {
+    founderNftPerAddressLimit = _nftAmount;
   }
 
   function setMaxMintAmount(uint256 _newmaxMintAmount) public onlyAdmin {
