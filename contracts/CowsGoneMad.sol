@@ -82,9 +82,9 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
     uint256 supply = totalSupply();
     require(supply + _mintAmount <= maxSupply, "Max NFT limit exceeded");
     if (isFounder(to)) {
-      require(foundersMintedBalance[to] < founderNftPerAddressLimit, "Founder address NFT limit reached");
+      require(foundersMintedBalance[to] + _mintAmount <= founderNftPerAddressLimit, "Founder address NFT limit reached");
     } else if (to != owner()) {
-      require(addressMintedBalance[to] < nftPerAddressLimit, "This address has reached its NFT limit");
+      require(addressMintedBalance[to] + _mintAmount <= nftPerAddressLimit, "This address has reached its NFT limit");
     }
     uint _price;
 
