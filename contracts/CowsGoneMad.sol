@@ -100,18 +100,19 @@ contract CowsGoneMad is ERC721Enumerable, Ownable, Admin {
       require(msg.value >= _price * _mintAmount, "Insufficient funds");
     }
 
-    for (uint256 i = 1; i <= _mintAmount; i++) {
+    for (uint256 i = 1; i <= _mintAmount;) {
       if (isFounder(to)) {
-        foundersMintedBalance[to]++;
-        _safeMint(to, supply + i);
+        unchecked {
+          _safeMint(to, supply + i);
+          foundersMintedBalance[to]++;
+          i++;
+        }
       } else {
-        addressMintedBalance[to]++;
-        _safeMint(to, supply + i);
-      }
-
-      unchecked {
-        addressMintedBalance[to]++;
-        ++i;
+        unchecked {
+          _safeMint(to, supply + i);
+          addressMintedBalance[to]++;
+          i++;
+        }
       }
     }
   }
