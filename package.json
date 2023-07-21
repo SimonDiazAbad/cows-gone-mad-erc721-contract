@@ -4,6 +4,7 @@
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "^0.5.16",
+    "solidity-coverage": "^0.7.17",
     "truffle-contract-size": "^2.0.1"
   }
 }

@@ -1,8 +1,6 @@
 const {
-  BN,           // Big Number support
-  constants,    // Common constants, like the zero address and largest integers
-  expectEvent,  // Assertions for emitted events
-  expectRevert, // Assertions for transactions that should fail
+  expectEvent,
+  expectRevert,
 } = require('@openzeppelin/test-helpers');
 const { web3 } = require('@openzeppelin/test-helpers/src/setup');
 
@@ -24,12 +22,46 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
   
     it('should return the notRevealedUri', async () => {
-      await cowsgonemad.pause(false);
+      const nonRevealedUri = 'https://CGM-NotRevealURI.com/';
+
+      await cowsgonemad.pauseStatus("unpause");
       await cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")
       });
-      assert.equal(await cowsgonemad.tokenURI.call(1), 'https://CGM-NotRevealURI.com/');
+
+      const result = await cowsgonemad.tokenURI.call(1);
+      assert.equal(result, nonRevealedUri);
+    });
+
+    it('returns the expected URI for a revealed token with a base URI', async function() {
+      const tokenId = 1;
+      const baseURI = 'https://CGM-baseURI.com/';
+      const baseExtension = '.json';
+    
+      await cowsgonemad.mint(1, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.02", "ether")
+      });
+      await cowsgonemad.reveal();
+    
+      const result = await cowsgonemad.tokenURI.call(tokenId);
+      assert.equal(result, baseURI + tokenId.toString() + baseExtension);
+    });
+
+    it('returns an empty string for a revealed token with no base URI', async function() {
+      const tokenId = 1;
+    
+      await cowsgonemad.mint(1, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.02", "ether")
+      });
+      await cowsgonemad.reveal();
+      await cowsgonemad.setBaseURI('');
+    
+      const result = await cowsgonemad.tokenURI(tokenId);
+    
+      assert.equal(result, '');
     });
   })
 
@@ -38,11 +70,12 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // ==========================
   describe('function isRevealed & reveal', () => {
     it('should show as false', async () => {
+      await cowsgonemad.revealedToFalse();
       assert.equal(await cowsgonemad.isRevealed.call(), false);
     });
   
     it('should show as true', async () => {
-      await cowsgonemad.reveal()
+      await cowsgonemad.reveal();
       assert.equal(await cowsgonemad.isRevealed.call(), true);
     });
   });
@@ -52,31 +85,31 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function mint', () => {
     it('should let us know the contract is paused', async () => {
-      await cowsgonemad.pause(true);
+      await cowsgonemad.pauseStatus("pause");
       await expectRevert(cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")
-      }), 'The contract is paused');
+      }),
+      'VM Exception while processing transaction: revert Pausable: paused -- Reason given: Pausable: paused.');
     });
   
-    it('should let us know to mint atleast 1 NFT', async () => {
-      await cowsgonemad.pause(false)
+    it('reverts when trying to mint 0 NFTs', async () => {
+      await cowsgonemad.pauseStatus("unpause")
       await expectRevert(cowsgonemad.mint(0, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")
       }), 'You need to mint atleast 1 NFT');
     });
   
-    it('should let us know the max mint amount per session was exceeded', async () => {
-      await cowsgonemad.pause(false)
-      await expectRevert(cowsgonemad.mint(101, accounts[1], {
+    it('reverts when trying to mint more than maxMintAmount NFTs', async () => {
+      const maxMintAmount = 100;
+      await expectRevert(cowsgonemad.mint(maxMintAmount + 1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")
       }), 'Max mint amount per session exceeded');
     });
 
     it('should let us know that there are insufficient funds', async () => {
-      await cowsgonemad.pause(false)
       await expectRevert(cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.00", "ether")
@@ -84,34 +117,18 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
   });
 
-  // =========================
-  // AddAdmin & RemoveAdmin
-  // =========================
-
-  describe('function addAdmin & removeAdmin', () => {
-    it('should return true', async () => {
-      await cowsgonemad.addAdmin(accounts[5]);
-      assert.equal(await cowsgonemad.isAdmin.call(accounts[5]), true);
-    });
-
-    it('should return false', async () => {
-      await cowsgonemad.removeAdmin(accounts[5]);
-      assert.equal(await cowsgonemad.isAdmin.call(accounts[5]), false);
-    });
-  });
-
   // ==========================
   // Pause
   // ==========================
   describe('function pause', () => {
-    it('should give us a pause state of false', async () => {
-      await cowsgonemad.pause(false);
-      assert.equal(await cowsgonemad.getPauseState.call(), false);
+    it('should give us a pause state of true', async () => {
+      await cowsgonemad.pauseStatus("pause");
+      assert.equal(await cowsgonemad.paused.call(), true);
     });
 
-    it('should give us a pause state of true', async () => {
-      await cowsgonemad.pause(true);
-      assert.equal(await cowsgonemad.getPauseState.call(), true);
+    it('should give us a pause state of false', async () => {
+      await cowsgonemad.pauseStatus("unpause");
+      assert.equal(await cowsgonemad.paused.call(), false);
     });
   });
 
@@ -211,12 +228,38 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function setWhitelistPrice', () => {
     it('should show us a price of 1.50 ETH', async () => {
-      await cowsgonemad.setWhitelistPrice(web3.utils.toWei("1.50", "ether"));
-      assert.equal(
-        await cowsgonemad.getWhitelistPrice.call(),
-        web3.utils.toWei("1.50", "ether")
+      const auxAdmin = accounts[0]; // assuming accounts[1] is AUX_ADMIN
+      const initialPrice = web3.utils.toWei("1.50", "ether");
+      const updatedPrice = web3.utils.toWei("0.01", "ether");
+  
+      // set initial price
+      await cowsgonemad.setWhitelistPrice(initialPrice, {from: auxAdmin});
+      let whitelistPrice = await cowsgonemad.getWhitelistPrice.call();
+      assert.equal(whitelistPrice.toString(), initialPrice, "Initial price not set correctly");
+  
+      // update price
+      await cowsgonemad.setWhitelistPrice(updatedPrice, {from: auxAdmin});
+      whitelistPrice = await cowsgonemad.getWhitelistPrice.call();
+      assert.equal(whitelistPrice.toString(), updatedPrice, "Updated price not set correctly");
+    });
+
+    it('should revert if not called by AUX_ADMIN', async () => {
+      const nonAdmin = accounts[1];
+      const auxAdmin = '0xb73fa0cb2416690a6547825d5ccf9cedab6a4cd328635df925e1dfd86cf94c21';
+      const price = web3.utils.toWei("1.50", "ether");
+    
+      await expectRevert(
+        cowsgonemad.setWhitelistPrice(price, {from: nonAdmin}),
+        `VM Exception while processing transaction: revert AccessControl: account ${nonAdmin.toLowerCase()} is missing role ${auxAdmin} -- Reason given: AccessControl: account ${nonAdmin.toLowerCase()} is missing role ${auxAdmin}.`
       );
-      await cowsgonemad.setWhitelistPrice(web3.utils.toWei("0.01", "ether"));
+    });
+
+    it('should emit SetWhitelistPrice event on price change', async () => {
+      const auxAdmin = accounts[0];
+      const updatedPrice = web3.utils.toWei("0.01", "ether");
+    
+      const tx = await cowsgonemad.setWhitelistPrice(updatedPrice, {from: auxAdmin});
+      expectEvent(tx, 'SetWhitelistPrice', { _newPrice: updatedPrice, _admin: auxAdmin });
     });
   });
 
