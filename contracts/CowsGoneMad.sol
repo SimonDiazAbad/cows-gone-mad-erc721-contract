@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl {
+contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGuard {
   using Strings for uint256;
 
   string public baseURI;
@@ -65,7 +66,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl {
   }
 
   // EXTERNAL
-  function mint(uint16 _mintAmount, address to) external payable whenNotPaused
+  function mint(uint16 _mintAmount, address to) external payable whenNotPaused()
   {
     require(_mintAmount > 0, "You need to mint atleast 1 NFT");
     require(_mintAmount <= maxMintAmount, "Max mint amount per session exceeded");
@@ -115,7 +116,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl {
     emit Mint(_mintAmount, _price, to);
   }
 
-  function burn(uint256 tokenId) external
+  function burn(uint256 tokenId) external whenNotPaused()
   {
     require(
       _isApprovedOrOwner(_msgSender(), tokenId),
@@ -175,18 +176,25 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl {
     emit SetNftPerAddressLimit(_limit, msg.sender);
   }
   
-  function setPrice(uint256 _newPrice) external
+  function setPrice(uint256 _newPrice) external nonReentrant()
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
     price = _newPrice;
     emit SetPrice(_newPrice, msg.sender);
   }
 
-  function setFoundersPrice(uint256 _newPrice) external
+  function setFoundersPrice(uint256 _newPrice) external nonReentrant()
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
     foundersPrice = _newPrice;
     emit SetFoundersPrice(_newPrice, msg.sender);
+  }
+
+  function setWhitelistPrice(uint256 _price) external nonReentrant()
+  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
+  {
+    whitelistPrice = _price;
+    emit SetWhitelistPrice(_price, msg.sender);
   }
 
   function setFounderNftLimit(uint32 _nftAmount) external
@@ -210,7 +218,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl {
     emit SetBaseExtension("The base extension has been changed.", msg.sender);
   }
 
-  function addFounders(address[] calldata _users) external
+  function addFounders(address[] calldata _users) external nonReentrant()
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
     for (uint256 i = 0; i < _users.length;) {
@@ -236,7 +244,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl {
     emit RemoveFounders(_users, msg.sender);
   }
   
-  function whitelistUsers(address[] calldata _users) external
+  function whitelistUsers(address[] calldata _users) external nonReentrant()
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
     for (uint256 i = 0; i < _users.length;) {
@@ -262,15 +270,9 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl {
     emit RemoveWhitelistUsers(_users, msg.sender);
   }
 
-  function setWhitelistPrice(uint256 _price) external 
-  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
-  {
-    whitelistPrice = _price;
-    emit SetWhitelistPrice(_price, msg.sender);
-  }
-
   // This will payout the owner 100% of the contract balance.
-  function withdraw() external payable onlyRole(DEFAULT_ADMIN_ROLE)
+  function withdraw() external payable nonReentrant()
+  onlyRole(DEFAULT_ADMIN_ROLE)
   {
     // =============================================================================
     (bool os, ) = payable(msg.sender).call{value: address(this).balance}("");
@@ -298,20 +300,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl {
         ? string(abi.encodePacked(currentBaseURI, tokenId.toString(), baseExtension))
         : "";
   }
-  
-  function setBaseURI(string memory _newBaseURI) public
-  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
-  {
-    baseURI = _newBaseURI;
-    emit SetBaseURI("The Base URI has changed.", msg.sender);
-  }
-
-  function setNotRevealedURI(string memory _notRevealedURI) public
-  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
-  {
-    notRevealedUri = _notRevealedURI;
-    emit SetNotRevealedURI("The Not revealed URI has been changed.", msg.sender);
-  }
 
   function pauseStatus(string memory _state) public
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
@@ -326,6 +314,20 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl {
       _unpause();
       emit Pause(_state, msg.sender);
     } 
+  }
+  
+  function setBaseURI(string memory _newBaseURI) public
+  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
+  {
+    baseURI = _newBaseURI;
+    emit SetBaseURI("The Base URI has changed.", msg.sender);
+  }
+
+  function setNotRevealedURI(string memory _notRevealedURI) public
+  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
+  {
+    notRevealedUri = _notRevealedURI;
+    emit SetNotRevealedURI("The Not revealed URI has been changed.", msg.sender);
   }
 
   // Views

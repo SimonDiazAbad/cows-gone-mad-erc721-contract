@@ -1,3 +1,7 @@
+require('dotenv').config();
+
+const { MUMBAI_TESTNET, POLYGON_MAINNET, MNEMONIC } = process.env;
+
 /**
  * Use this file to configure your truffle project. It's seeded with some
  * common settings for different networks and features like migrations,
@@ -69,6 +73,19 @@ module.exports = {
      port: 7545,            // Standard Ethereum port (default: none)
      network_id: "*",       // Any network (default: none)
     },
+    // mumbai: {
+    //   provider: () => new HDWalletProvider(MNEMONIC, MUMBAI_TESTNET),
+    //   network_id: 80001,
+    //   gas: 4500000
+    // },
+    // polygon: {
+    //   provider: function() {
+    //     return new HDWalletProvider(MNEMONIC, POLYGON_MAINNET);
+    //   },
+    //   network_id: 137,
+    //   gas: 5000000,
+    //   gasPrice: 10000000000
+    // },
     //
     // An additional network, but with some advanced options…
     // advanced: {
