@@ -29,9 +29,9 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   bool public revealed;
 
   bytes32 public constant AUX_ADMIN = keccak256("AUX_ADMIN");
+  bytes32 public constant FOUNDER_ROLE = keccak256("FOUNDER");
 
   mapping(address => uint256) public addressMintedBalance;
-  mapping(address => bool) public founders;
   mapping(address => uint256) public foundersMintedBalance;
   mapping(address => bool) public claimedWhitelist;
 
@@ -46,8 +46,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   event SetBaseExtension(string _newBaseExtension, address _admin);
   event SetNotRevealedURI(string _notRevealedURI, address _admin);
   event Pause(string _status, address _admin);
-  event AddFounders(address[] _founders, address _admin);
-  event RemoveFounders(address[] _founders, address _admin);
   event SetWhitelistPrice(uint256 _newPrice, address _admin);
   event Mint(uint16 _mintAmount, uint256 _price, address _user);
   event Burn(uint256 _tokenId, address _user);
@@ -64,6 +62,8 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     _setupRole(AUX_ADMIN, msg.sender);
     _setRoleAdmin(AUX_ADMIN, DEFAULT_ADMIN_ROLE);
+    _setRoleAdmin(FOUNDER_ROLE, DEFAULT_ADMIN_ROLE);
+
     setBaseURI(_initBaseURI);
     setNotRevealedURI(_initNotRevealedUri);
     pauseStatus(_initPause);
@@ -78,7 +78,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     require(_mintAmount <= maxMintAmount, "Max mint amount per session exceeded");
     uint256 supply = totalSupply();
     require(supply + _mintAmount <= maxSupply, "Max NFT limit exceeded");
-    if (isFounder(to)) {
+    if (hasRole(FOUNDER_ROLE, to)) {
       require(foundersMintedBalance[to] + _mintAmount <= founderNftPerAddressLimit, "Founder address NFT limit reached");
     } else if (hasRole(DEFAULT_ADMIN_ROLE, to)) {
       require(ownerNftPool + _mintAmount <= ownerNftLimit, "Owner Nft limit has been reached");
@@ -88,7 +88,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
 
     uint256 _price;
 
-    if (isFounder(to)) {
+    if (hasRole(FOUNDER_ROLE, to)) {
       require(currentFounderMint + _mintAmount <= maxFounderMintAmount, "Max founder mint amount exceeded");
       currentFounderMint += _mintAmount;
       _price = foundersPrice;
@@ -101,7 +101,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     }
 
     for (uint32 i = 1; i <= _mintAmount;) {
-      if (isFounder(to)) {
+      if (hasRole(FOUNDER_ROLE, to)) {
         unchecked {
           foundersMintedBalance[to]++;
         }
@@ -261,32 +261,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     emit SetBaseExtension(_newBaseExtension, msg.sender);
   }
 
-  function addFounders(address[] calldata _users) external nonReentrant()
-  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
-  {
-    for (uint256 i = 0; i < _users.length;) {
-    require(_users[i] != address(0), "addFounders: Invalid zero address.");
-      founders[_users[i]] = true;
-      unchecked {
-        i++;
-      }
-    }
-    emit AddFounders(_users, msg.sender);
-  }
-
-  function removeFounders(address[] calldata _users) external
-  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
-  {
-    for (uint256 i = 0; i < _users.length;) {
-      require(_users[i] != address(0), "removeFounders: Invalid zero address.");
-      founders[_users[i]] = false;
-      unchecked {
-        i++;
-      }
-    }
-    emit RemoveFounders(_users, msg.sender);
-  }
-
   // This will payout the owner 100% of the contract balance.
   function withdraw() external payable nonReentrant()
   onlyRole(DEFAULT_ADMIN_ROLE)
@@ -345,12 +319,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   {
     notRevealedUri = _notRevealedURI;
     emit SetNotRevealedURI(_notRevealedURI, msg.sender);
-  }
-
-  function isFounder(address _user) public view returns (bool)
-  {
-    require(_user != address(0), "isFounder: Invalid zero address.");
-    return founders[_user];
   }
 
   // The following functions are overrides required by Solidity.

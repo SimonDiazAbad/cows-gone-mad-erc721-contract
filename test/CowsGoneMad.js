@@ -140,7 +140,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       const maxFounderMint = await cowsgonemad.maxFounderMintAmount();
       await cowsgonemad.setFounderNftLimit(maxFounderMint * 2);
 
-      await cowsgonemad.addFounders([accounts[2]]);
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
 
       for(let i = 0; i < 2; i++) {
         await cowsgonemad.mint(100, accounts[2], {
@@ -174,13 +174,13 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function addFounders', () => {
     it('should return false', async () => {
-      await cowsgonemad.addFounders([accounts[2]]);
-      assert.equal(await cowsgonemad.isFounder.call(accounts[1]), false);
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
+      assert.equal(await cowsgonemad.hasRole(await cowsgonemad.FOUNDER_ROLE(), accounts[1]), false);
     });
 
     it('should return true', async () => {
-      await cowsgonemad.addFounders([accounts[3]]);
-      assert.equal(await cowsgonemad.isFounder(accounts[3]), true);
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
+      assert.equal(await cowsgonemad.hasRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2]), true);
     });
   });
 
@@ -189,9 +189,9 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function removeFounders', () => {
     it('should return false', async () => {
-      await cowsgonemad.addFounders([accounts[4]]);
-      await cowsgonemad.removeFounders([accounts[4]]);
-      assert.equal(await cowsgonemad.isFounder.call(accounts[4]), false);
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[4], { from: accounts[0] });
+      await cowsgonemad.revokeRole(await cowsgonemad.FOUNDER_ROLE(), accounts[4], { from: accounts[0] });
+      assert.equal(await cowsgonemad.hasRole(await cowsgonemad.FOUNDER_ROLE(), accounts[4]), false);
     });
   });
 
