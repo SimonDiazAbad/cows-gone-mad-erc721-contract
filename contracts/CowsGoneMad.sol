@@ -39,9 +39,9 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   event SetFoundersPrice(uint256 _newPrice, address _admin);
   event SetFoundersNftLimit(uint32 _limit, address _admin);
   event SetMaxMintAmount(uint32 _limit, address _admin);
-  event SetBaseURI(string _message, address _admin);
-  event SetBaseExtension(string _message, address _admin);
-  event SetNotRevealedURI(string _message, address _admin);
+  event SetBaseURI(string _newBaseURI, address _admin);
+  event SetBaseExtension(string _newBaseExtension, address _admin);
+  event SetNotRevealedURI(string _notRevealedURI, address _admin);
   event Pause(string _status, address _admin);
   event AddFounders(address[] _founders, address _admin);
   event RemoveFounders(address[] _founders, address _admin);
@@ -220,7 +220,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
     baseExtension = _newBaseExtension;
-    emit SetBaseExtension("The base extension has been changed.", msg.sender);
+    emit SetBaseExtension(_newBaseExtension, msg.sender);
   }
 
   function addFounders(address[] calldata _users) external nonReentrant()
@@ -325,14 +325,14 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
     baseURI = _newBaseURI;
-    emit SetBaseURI("The Base URI has changed.", msg.sender);
+    emit SetBaseURI(_newBaseURI, msg.sender);
   }
 
   function setNotRevealedURI(string memory _notRevealedURI) public
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
     notRevealedUri = _notRevealedURI;
-    emit SetNotRevealedURI("The Not revealed URI has been changed.", msg.sender);
+    emit SetNotRevealedURI(_notRevealedURI, msg.sender);
   }
 
   // Views
