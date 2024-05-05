@@ -1,10 +1,10 @@
 const { StandardMerkleTree } = require("@openzeppelin/merkle-tree");
 const fs = require('fs');
 
-const whitelist = JSON.parse(fs.readFileSync("./whitelist.json", "utf8"));
-
-const tree = StandardMerkleTree.of(whitelist, ["address", "uint256"]);
-
-console.log('Merkle Root:', tree.root);
-
-fs.writeFileSync("tree.json", JSON.stringify(tree.dump()));
+function createWhitelist(inputs, outputFile) {
+    const tree = StandardMerkleTree.of(inputs, ["address", "uint256"]);
+    fs.writeFileSync(outputFile, JSON.stringify(tree.dump()));
+    return tree.root;
+  }
+  
+  module.exports = { createWhitelist };

@@ -3,6 +3,9 @@ const {
   expectRevert,
 } = require('@openzeppelin/test-helpers');
 const { web3 } = require('@openzeppelin/test-helpers/src/setup');
+const { createWhitelist } = require('../scripts/merkle-create');
+const { findMerkleProof } = require('../scripts/merkle-proof');
+const fs = require('fs');
 
 const CowsGoneMad = artifacts.require('CowsGoneMad_Mock');
 
@@ -12,6 +15,13 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   beforeEach(async () => {
     cowsgonemad = await CowsGoneMad.deployed();
   });
+
+  after(async () => {
+    // we delete the test tree file if it exists
+    if (fs.existsSync('test_tree.json')) {
+      fs.unlinkSync('test_tree.json');
+    }
+  })
 
   // ==========================
   // TokenURI
@@ -200,24 +210,34 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function whitelistUsers', () => {
     it('should return false', async () => {
-      await cowsgonemad.whitelistUsers([accounts[9]]);
-      assert.equal(await cowsgonemad.isWhitelisted.call(accounts[1]), false);
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[1]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+
+      // await expectRevert(cowsgonemad.verifyMerkle(merkleProof, accounts[9], 1), 'VM Exception while processing transaction: revert Invalid proof');
+      
+      assert.equal(await cowsgonemad.verifyMerkle(merkleProof, accounts[9], 1), false);
+
     });
 
-    it('should return false', async () => {
-      await cowsgonemad.whitelistUsers([accounts[8]]);
-      assert.equal(await cowsgonemad.isWhitelisted(accounts[8]), true);
-    });
-  });
+    it('should return true', async () => {
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
 
-  // =========================
-  // RemoveWhitelistUsers
-  // =========================
-  describe('function removeWhitelistUsers', () => {
-    it('should return false', async () => {
-      await cowsgonemad.whitelistUsers([accounts[9]]);
-      await cowsgonemad.removeWhitelistedUsers([accounts[9]]);
-      assert.equal(await cowsgonemad.isWhitelisted.call(accounts[9]), false);
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[1]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+
+      assert.equal(await cowsgonemad.verifyMerkle(merkleProof, whitelist[1][0], whitelist[1][1]), true);
     });
   });
 

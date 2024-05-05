@@ -147,9 +147,8 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
         uint16 amount
     ) public view returns (bool) {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(addr, amount))));
-        require(MerkleProof.verify(proof, merkleRoot, leaf), "Invalid proof");
 
-        return true;
+        return MerkleProof.verify(proof, merkleRoot, leaf);
     }
 
   function burn(uint256 tokenId) external whenNotPaused()
