@@ -21,12 +21,13 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   uint32 public maxFounderMintAmount = 200;
   uint32 public currentFounderMint = 0;
   uint32 public nftPerAddressLimit = 100;
-  uint256 public constant maxSupply = 9999;
+  uint256 public maxSupply = 9999;
   uint32 public constant ownerNftLimit = 300;
   uint32 public ownerNftPool;
   bytes32 public merkleRoot;
   string public notRevealedUri;
   bool public revealed;
+  bool public lockedSupply = false;
 
   bytes32 public constant AUX_ADMIN = keccak256("AUX_ADMIN");
   bytes32 public constant FOUNDER_ROLE = keccak256("FOUNDER");
@@ -45,10 +46,13 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   event SetBaseURI(string _newBaseURI, address _admin);
   event SetBaseExtension(string _newBaseExtension, address _admin);
   event SetNotRevealedURI(string _notRevealedURI, address _admin);
+  event SetMaxSupply(uint256 _newMaxSupply, address _admin);
   event Pause(string _status, address _admin);
   event SetWhitelistPrice(uint256 _newPrice, address _admin);
+  event LockSupply(bool _status, address _admin);
   event Mint(uint16 _mintAmount, uint256 _price, address _user);
   event Burn(uint256 _tokenId, address _user);
+
 
   constructor(
     string memory _name,
@@ -258,6 +262,32 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   {
     baseExtension = _newBaseExtension;
     emit SetBaseExtension(_newBaseExtension, msg.sender);
+  }
+
+  function setMaxSupply(uint256 _newMaxSupply) external
+  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
+  {
+    require(!lockedSupply, "ERC721: cannot set max supply when supply is locked");
+
+    require(
+      _newMaxSupply >= totalSupply(),
+      "ERC721: new max supply must be greater than current supply"
+    );
+
+    require(
+      _newMaxSupply <= maxSupply,
+      "ERC721: new max supply must be less than current supply"
+    );
+
+    maxSupply = _newMaxSupply;
+    emit SetMaxSupply(_newMaxSupply, msg.sender);
+  }
+
+  function lockSupply() external
+  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
+  {
+    lockedSupply = true;
+    emit LockSupply(lockedSupply, msg.sender);
   }
 
   // This will payout the owner 100% of the contract balance.
