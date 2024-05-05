@@ -17,6 +17,8 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   uint256 public whitelistPrice = 0.01 ether;
   uint32 public maxMintAmount = 100;
   uint32 public founderNftPerAddressLimit = 5;
+  uint32 public maxFounderMintAmount = 200;
+  uint32 public currentFounderMint = 0;
   uint32 public nftPerAddressLimit = 100;
   uint256 public constant maxSupply = 9999;
   uint32 public constant ownerNftLimit = 300;
@@ -84,6 +86,8 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     uint256 _price;
 
     if (isFounder(to)) {
+      require(currentFounderMint + _mintAmount <= maxFounderMintAmount, "Max founder mint amount exceeded");
+      currentFounderMint += _mintAmount;
       _price = foundersPrice;
     } else if (isWhitelisted(to)) {
       _price = whitelistPrice;

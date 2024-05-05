@@ -135,6 +135,23 @@ contract('CowsGoneMad_Mock', async (accounts) => {
 
       assert.equal(await cowsgonemad.balanceOf(accounts[2]), 1);
     })
+
+    it('should revert when over max founder mint', async () => {
+      const maxFounderMint = await cowsgonemad.maxFounderMintAmount();
+      await cowsgonemad.setFounderNftLimit(maxFounderMint * 2);
+
+      await cowsgonemad.addFounders([accounts[2]]);
+
+      for(let i = 0; i < 2; i++) {
+        await cowsgonemad.mint(100, accounts[2], {
+          from: accounts[2],
+        });
+      }
+
+      await expectRevert(cowsgonemad.mint(1, accounts[2], {
+        from: accounts[2],
+      }), 'Max founder mint amount exceeded');
+    })
   });
 
   // ==========================
