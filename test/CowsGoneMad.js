@@ -115,6 +115,26 @@ contract('CowsGoneMad_Mock', async (accounts) => {
         value: web3.utils.toWei("0.00", "ether")
       }), 'Insufficient funds');
     });
+
+    it('should revert when msg.sender is not "to" address or approvedForAll', async () => {
+      await expectRevert(cowsgonemad.mint(1, accounts[1], {
+        from: accounts[2],
+        value: web3.utils.toWei("0.02", "ether")
+      }), "caller is not token owner or approved")
+    })
+
+    it('should mint when msg.sender is approvedForAll', async () => {
+      await cowsgonemad.setApprovalForAll(accounts[3], true, {
+        from: accounts[2]
+      });
+
+      await cowsgonemad.mint(1, accounts[2], {
+        from: accounts[3],
+        value: web3.utils.toWei("0.02", "ether")
+      });
+
+      assert.equal(await cowsgonemad.balanceOf(accounts[2]), 1);
+    })
   });
 
   // ==========================
