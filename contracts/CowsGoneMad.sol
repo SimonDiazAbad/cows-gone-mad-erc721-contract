@@ -68,6 +68,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   // EXTERNAL
   function mint(uint16 _mintAmount, address to) external payable whenNotPaused()
   {
+    require(msg.sender == to || isApprovedForAll(to, msg.sender), "caller is not token owner or approved");
     require(_mintAmount > 0, "You need to mint atleast 1 NFT");
     require(_mintAmount <= maxMintAmount, "Max mint amount per session exceeded");
     uint256 supply = totalSupply();
