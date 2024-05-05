@@ -1,10 +1,14 @@
 {
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.2",
-    "dotenv": "^16.3.1"
+    "@openzeppelin/merkle-tree": "^1.0.6",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.12.1",
+    "truffle": "^5.11.5"
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "^0.5.16",
+    "ganache-cli": "^6.12.2",
     "solidity-coverage": "^0.7.17",
     "truffle-contract-size": "^2.0.1"
   }

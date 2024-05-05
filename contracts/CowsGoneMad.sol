@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {MerkleProof} from '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 
 contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGuard {
   using Strings for uint256;
@@ -23,17 +24,19 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   uint256 public constant maxSupply = 9999;
   uint32 public constant ownerNftLimit = 300;
   uint32 public ownerNftPool;
+  bytes32 public merkleRoot;
   string public notRevealedUri;
   bool public revealed;
 
   bytes32 public constant AUX_ADMIN = keccak256("AUX_ADMIN");
 
-  mapping(address => bool) public whitelistedAddresses;
   mapping(address => uint256) public addressMintedBalance;
   mapping(address => bool) public founders;
   mapping(address => uint256) public foundersMintedBalance;
+  mapping(address => bool) public claimedWhitelist;
 
   event Reveal(bool _status, address _admin);
+  event SetMerkleRoot(bytes32 _root, address _admin);
   event SetNftPerAddressLimit(uint32 _limit, address _admin);
   event SetPrice(uint256 _newPrice, address _admin);
   event SetFoundersPrice(uint256 _newPrice, address _admin);
@@ -45,8 +48,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   event Pause(string _status, address _admin);
   event AddFounders(address[] _founders, address _admin);
   event RemoveFounders(address[] _founders, address _admin);
-  event WhitelistUsers(address[] _users, address _admin);
-  event RemoveWhitelistUsers(address[] _users, address _admin);
   event SetWhitelistPrice(uint256 _newPrice, address _admin);
   event Mint(uint16 _mintAmount, uint256 _price, address _user);
   event Burn(uint256 _tokenId, address _user);
@@ -56,7 +57,8 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     string memory _symbol,
     string memory _initBaseURI,
     string memory _initNotRevealedUri,
-    string memory _initPause
+    string memory _initPause,
+    bytes32 _merkleRoot
   ) ERC721(_name, _symbol)
   {
     _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -65,6 +67,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     setBaseURI(_initBaseURI);
     setNotRevealedURI(_initNotRevealedUri);
     pauseStatus(_initPause);
+    merkleRoot = _merkleRoot;
   }
 
   // EXTERNAL
@@ -89,8 +92,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
       require(currentFounderMint + _mintAmount <= maxFounderMintAmount, "Max founder mint amount exceeded");
       currentFounderMint += _mintAmount;
       _price = foundersPrice;
-    } else if (isWhitelisted(to)) {
-      _price = whitelistPrice;
     } else {
       _price = price;
     }
@@ -120,6 +121,36 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     }
     emit Mint(_mintAmount, _price, to);
   }
+
+  function mintWhitelist(uint16 _mintAmount, bytes32[] calldata merkleProof) external payable whenNotPaused {
+    require(!claimedWhitelist[msg.sender], "Already claimed");
+    require(msg.value == whitelistPrice * _mintAmount, "Insufficient funds");
+    uint256 supply = totalSupply();
+    require(supply + _mintAmount <= maxSupply, "Max NFT limit exceeded");
+    require(verifyMerkle(merkleProof, msg.sender, _mintAmount), 'Invalid proof');
+
+    addressMintedBalance[msg.sender] += _mintAmount;
+    claimedWhitelist[msg.sender] = true;
+
+    for (uint32 i = 1; i <= _mintAmount; i++) {
+      unchecked {
+        _safeMint(msg.sender, supply + i);
+      }
+    }
+
+    emit Mint(_mintAmount, whitelistPrice, msg.sender);
+  }
+
+  function verifyMerkle(
+        bytes32[] memory proof,
+        address addr,
+        uint16 amount
+    ) public view returns (bool) {
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(addr, amount))));
+        require(MerkleProof.verify(proof, merkleRoot, leaf), "Invalid proof");
+
+        return true;
+    }
 
   function burn(uint256 tokenId) external whenNotPaused()
   {
@@ -167,6 +198,13 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   }
 
   // Only Admin
+  function setMerkleRoot(bytes32 _merkleRoot) external 
+  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
+  {
+    merkleRoot = _merkleRoot;
+    emit SetMerkleRoot(_merkleRoot, msg.sender);
+  }
+
   function reveal() external
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
@@ -248,32 +286,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     }
     emit RemoveFounders(_users, msg.sender);
   }
-  
-  function whitelistUsers(address[] calldata _users) external nonReentrant()
-  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
-  {
-    for (uint256 i = 0; i < _users.length;) {
-      require(_users[i] != address(0), "whitelistUsers: Invalid zero address.");
-      whitelistedAddresses[_users[i]] = true;
-      unchecked {
-        i++;
-      }
-    }
-    emit WhitelistUsers(_users, msg.sender);
-  }
-
-  function removeWhitelistedUsers(address[] calldata _users) external 
-  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
-  {
-    for (uint256 i = 0; i < _users.length;) {
-      require(_users[i] != address(0), "removeWhitelistedUsers: Invalid zero address.");
-      whitelistedAddresses[_users[i]] = false;
-      unchecked {
-        i++;
-      }
-    }
-    emit RemoveWhitelistUsers(_users, msg.sender);
-  }
 
   // This will payout the owner 100% of the contract balance.
   function withdraw() external payable nonReentrant()
@@ -333,13 +345,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   {
     notRevealedUri = _notRevealedURI;
     emit SetNotRevealedURI(_notRevealedURI, msg.sender);
-  }
-
-  // Views
-  function isWhitelisted(address _user) public view returns (bool)
-  {
-    require(_user != address(0), "isWhitelisted: Invalid zero address.");
-    return whitelistedAddresses[_user];
   }
 
   function isFounder(address _user) public view returns (bool)

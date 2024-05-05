@@ -11,13 +11,16 @@ contract CowsGoneMad_Mock is CowsGoneMad {
     string memory _symbol,
     string memory _initBaseURI,
     string memory _initNotRevealedUri,
-    string memory _initPause
+    string memory _initPause,
+    bytes32 _merkleRoot
+
   ) CowsGoneMad(
     _name,
     _symbol,
     _initBaseURI,
     _initNotRevealedUri,
-    _initPause
+    _initPause,
+    _merkleRoot
   ) {}
 
   function getNftPerAddressLimit() public view returns (uint256) {
