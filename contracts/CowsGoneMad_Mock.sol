@@ -10,7 +10,6 @@ contract CowsGoneMad_Mock is CowsGoneMad {
     string memory _name,
     string memory _symbol,
     string memory _initBaseURI,
-    string memory _initNotRevealedUri,
     string memory _initPause,
     bytes32 _merkleRoot
 
@@ -18,7 +17,6 @@ contract CowsGoneMad_Mock is CowsGoneMad {
     _name,
     _symbol,
     _initBaseURI,
-    _initNotRevealedUri,
     _initPause,
     _merkleRoot
   ) {}

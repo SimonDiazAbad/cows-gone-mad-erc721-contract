@@ -31,24 +31,13 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       await expectRevert(cowsgonemad.tokenURI.call(10000), 'ERC721Metadata: URI query for nonexistent token');
     });
   
-    it('should return the notRevealedUri', async () => {
-      const nonRevealedUri = 'https://CGM-NotRevealURI.com/';
-
-      await cowsgonemad.pauseStatus("unpause");
-      await cowsgonemad.mint(1, accounts[1], {
-        from: accounts[1],
-        value: web3.utils.toWei("0.02", "ether")
-      });
-
-      const result = await cowsgonemad.tokenURI.call(1);
-      assert.equal(result, nonRevealedUri);
-    });
-
     it('returns the expected URI for a revealed token with a base URI', async function() {
       const tokenId = 1;
       const baseURI = 'https://CGM-baseURI.com/';
       const baseExtension = '.json';
     
+      await cowsgonemad.pauseStatus("unpause");
+      
       await cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")

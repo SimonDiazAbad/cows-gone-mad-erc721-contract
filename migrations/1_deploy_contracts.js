@@ -6,7 +6,6 @@ module.exports = async function(deployer) {
     'Cows Gone Mad',
     'CGM',
     'https://CGM-baseURI.com/',
-    'https://CGM-NotRevealURI.com/',
     'pause',
     '0x8652d3c05403e6839439915dec1292f5935f0dedfab23ebe6904147a32a96ebf'
   );

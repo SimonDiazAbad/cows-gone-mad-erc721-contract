@@ -25,7 +25,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   uint32 public constant ownerNftLimit = 300;
   uint32 public ownerNftPool;
   bytes32 public merkleRoot;
-  string public notRevealedUri;
   bool public revealed;
   bool public lockedSupply = false;
   bool public isWhitelistMintingActive = false;
@@ -46,7 +45,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   event SetMaxMintAmount(uint32 _limit, address _admin);
   event SetBaseURI(string _newBaseURI, address _admin);
   event SetBaseExtension(string _newBaseExtension, address _admin);
-  event SetNotRevealedURI(string _notRevealedURI, address _admin);
   event SetMaxSupply(uint256 _newMaxSupply, address _admin);
   event Pause(string _status, address _admin);
   event SetWhitelistPrice(uint256 _newPrice, address _admin);
@@ -60,7 +58,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     string memory _name,
     string memory _symbol,
     string memory _initBaseURI,
-    string memory _initNotRevealedUri,
     string memory _initPause,
     bytes32 _merkleRoot
   ) ERC721(_name, _symbol)
@@ -71,7 +68,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     _setRoleAdmin(FOUNDER_ROLE, DEFAULT_ADMIN_ROLE);
 
     setBaseURI(_initBaseURI);
-    setNotRevealedURI(_initNotRevealedUri);
     pauseStatus(_initPause);
     merkleRoot = _merkleRoot;
   }
@@ -321,10 +317,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
       _exists(tokenId), "ERC721Metadata: URI query for nonexistent token"
     );
     
-    if(!revealed) {
-      return notRevealedUri;
-    }
-
     string memory currentBaseURI = _baseURI();
     return bytes(currentBaseURI).length > 0
         ? string(abi.encodePacked(currentBaseURI, tokenId.toString(), baseExtension))
@@ -351,13 +343,6 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   {
     baseURI = _newBaseURI;
     emit SetBaseURI(_newBaseURI, msg.sender);
-  }
-
-  function setNotRevealedURI(string memory _notRevealedURI) public
-  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
-  {
-    notRevealedUri = _notRevealedURI;
-    emit SetNotRevealedURI(_notRevealedURI, msg.sender);
   }
 
   // The following functions are overrides required by Solidity.
