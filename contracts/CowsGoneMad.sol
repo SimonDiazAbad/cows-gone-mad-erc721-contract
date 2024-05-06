@@ -28,6 +28,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   string public notRevealedUri;
   bool public revealed;
   bool public lockedSupply = false;
+  bool public isWhitelistMintingActive = false;
 
   bytes32 public constant AUX_ADMIN = keccak256("AUX_ADMIN");
   bytes32 public constant FOUNDER_ROLE = keccak256("FOUNDER");
@@ -52,6 +53,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   event LockSupply(bool _status, address _admin);
   event Mint(uint16 _mintAmount, uint256 _price, address _user);
   event Burn(uint256 _tokenId, address _user);
+  event ToggleWhitelistMinting(bool _status, address _admin);
 
 
   constructor(
@@ -127,6 +129,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   }
 
   function mintWhitelist(uint16 _mintAmount, bytes32[] calldata merkleProof) external payable whenNotPaused {
+    require(isWhitelistMintingActive, "Whitelist minting is not active");
     require(!claimedWhitelist[msg.sender], "Already claimed");
     require(msg.value == whitelistPrice * _mintAmount, "Insufficient funds");
     uint256 supply = totalSupply();
@@ -288,6 +291,13 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   {
     lockedSupply = true;
     emit LockSupply(lockedSupply, msg.sender);
+  }
+
+  function toggleWhitelistMinting() external
+  onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
+  {
+    isWhitelistMintingActive = !isWhitelistMintingActive;
+    emit ToggleWhitelistMinting(isWhitelistMintingActive, msg.sender);
   }
 
   // This will payout the owner 100% of the contract balance.
