@@ -151,6 +151,40 @@ contract('CowsGoneMad_Mock', async (accounts) => {
         from: accounts[2],
       }), 'Max founder mint amount exceeded');
     })
+
+    it('should revert when over ownerNftLimit', async () => {
+      const ownerNftLimit = await cowsgonemad.ownerNftLimit();
+
+      await cowsgonemad.setMaxMintAmount(ownerNftLimit + 1);
+
+      await expectRevert(cowsgonemad.mint(ownerNftLimit + 1, accounts[0], {
+        from: accounts[0],
+      }), 'Owner Nft limit has been reached')
+    })
+
+    it('should mint for whitelist users', async () => {
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[2]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+      await cowsgonemad.setWhitelistMintingStatus(true);
+
+      // await expectRevert(cowsgonemad.verifyMerkle(merkleProof, accounts[9], 1), 'VM Exception while processing transaction: revert Invalid proof');
+      
+      console.log(whitelist[2][1] * await cowsgonemad.whitelistPrice())
+      await cowsgonemad.mintWhitelist(whitelist[2][1], merkleProof, {
+        from: whitelist[2][0],
+        // price is whitelist[2][1] * await cowsgonemad.whitelistPrice()
+        value: String(whitelist[2][1] * await cowsgonemad.whitelistPrice())
+      });
+
+      assert.equal(await cowsgonemad.balanceOf(whitelist[2][0]), whitelist[2][1]);
+    })
   });
 
   // ==========================

@@ -51,7 +51,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   event LockSupply(bool _status, address _admin);
   event Mint(uint16 _mintAmount, uint256 _price, address _user);
   event Burn(uint256 _tokenId, address _user);
-  event ToggleWhitelistMinting(bool _status, address _admin);
+  event ChangedWhitelistMintingStatus(bool _status, address _admin);
 
 
   constructor(
@@ -289,11 +289,11 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     emit LockSupply(lockedSupply, msg.sender);
   }
 
-  function toggleWhitelistMinting() external
+  function setWhitelistMintingStatus(bool _status) external
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
-    isWhitelistMintingActive = !isWhitelistMintingActive;
-    emit ToggleWhitelistMinting(isWhitelistMintingActive, msg.sender);
+    isWhitelistMintingActive = _status;
+    emit ChangedWhitelistMintingStatus(isWhitelistMintingActive, msg.sender);
   }
 
   // This will payout the owner 100% of the contract balance.
