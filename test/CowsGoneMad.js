@@ -13,7 +13,8 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   let cowsgonemad;
 
   beforeEach(async () => {
-    cowsgonemad = await CowsGoneMad.deployed();
+    // cowsgonemad = await CowsGoneMad.deployed();
+    cowsgonemad = await CowsGoneMad.new('Cows Gone Mad', 'CGM', 'https://CGM-baseURI.com/', 'pause', '0x8652d3c05403e6839439915dec1292f5935f0dedfab23ebe6904147a32a96ebf');
   });
 
   after(async () => {
@@ -49,6 +50,8 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
 
     it('returns an empty string for a revealed token with no base URI', async function() {
+      await cowsgonemad.pauseStatus("unpause");
+
       const tokenId = 1;
     
       await cowsgonemad.mint(1, accounts[1], {
@@ -83,6 +86,11 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // Mint
   // =========================
   describe('function mint', () => {
+
+    beforeEach(async () => {
+      await cowsgonemad.pauseStatus("unpause");
+    })
+    
     it('should let us know the contract is paused', async () => {
       await cowsgonemad.pauseStatus("pause");
       await expectRevert(cowsgonemad.mint(1, accounts[1], {
@@ -93,14 +101,14 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
   
     it('reverts when trying to mint 0 NFTs', async () => {
-      await cowsgonemad.pauseStatus("unpause")
       await expectRevert(cowsgonemad.mint(0, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")
       }), 'You need to mint atleast 1 NFT');
     });
   
-    it('reverts when trying to mint more than maxMintAmount NFTs', async () => {
+    it('reverts when trying to mint more than maxMintAmount NFTs', async () => {;
+
       const maxMintAmount = 100;
       await expectRevert(cowsgonemad.mint(maxMintAmount + 1, accounts[1], {
         from: accounts[1],
@@ -108,21 +116,24 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       }), 'Max mint amount per session exceeded');
     });
 
-    it('should let us know that there are insufficient funds', async () => {
+    it('should let us know that there are insufficient funds', async () => {;
+
       await expectRevert(cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.00", "ether")
       }), 'Insufficient funds');
     });
 
-    it('should revert when msg.sender is not "to" address or approvedForAll', async () => {
+    it('should revert when msg.sender is not "to" address or approvedForAll', async () => {;
+      
       await expectRevert(cowsgonemad.mint(1, accounts[1], {
         from: accounts[2],
         value: web3.utils.toWei("0.02", "ether")
       }), "caller is not token owner or approved")
     })
 
-    it('should mint when msg.sender is approvedForAll', async () => {
+    it('should mint when msg.sender is approvedForAll', async () => {;
+
       await cowsgonemad.setApprovalForAll(accounts[3], true, {
         from: accounts[2]
       });
@@ -135,7 +146,8 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       assert.equal(await cowsgonemad.balanceOf(accounts[2]), 1);
     })
 
-    it('should revert when over max founder mint', async () => {
+    it('should revert when over max founder mint', async () => {;
+
       const maxFounderMint = await cowsgonemad.maxFounderMintAmount();
       await cowsgonemad.setFounderNftLimit(maxFounderMint * 2);
 
@@ -152,7 +164,8 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       }), 'Max founder mint amount exceeded');
     })
 
-    it('should revert when over ownerNftLimit', async () => {
+    it('should revert when over ownerNftLimit', async () => {;
+
       const ownerNftLimit = await cowsgonemad.ownerNftLimit();
 
       await cowsgonemad.setMaxMintAmount(ownerNftLimit + 1);
@@ -162,7 +175,8 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       }), 'Owner Nft limit has been reached')
     })
 
-    it('should mint for whitelist users', async () => {
+    it('should mint for whitelist users', async () => {;
+
       let whitelist = [];
       for (let i = 0; i < 9; i++) {
         whitelist.push([accounts[i], 1]);
@@ -196,7 +210,6 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // ==========================
   describe('function pause', () => {
     it('should give us a pause state of true', async () => {
-      await cowsgonemad.pauseStatus("pause");
       assert.equal(await cowsgonemad.paused.call(), true);
     });
 
@@ -379,5 +392,92 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       await cowsgonemad.setBaseExtension(".json");
     });
   });
+
+  // =========================
+  // Burn
+  // =========================
+  describe('function burn', () => {
+    it('should let us burn a token', async () => {
+      await cowsgonemad.pauseStatus("unpause");
+
+      await cowsgonemad.mint(1, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.02", "ether")
+      });
+
+      await cowsgonemad.burn(1, {from: accounts[1]});
+
+      assert.equal(await cowsgonemad.balanceOf(accounts[1]), 0);
+    });
+
+    it('should revert if not called by owner or approved', async () => {
+      await cowsgonemad.pauseStatus("unpause");
+  
+      await cowsgonemad.mint(1, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.02", "ether")
+      });
+  
+      await expectRevert(
+        cowsgonemad.burn(1, {from: accounts[0]}),
+        "ERC721: caller is not token owner or approved"
+      );
+    })
+  })
+
+  // =========================
+  // walletOfOwner
+  // =========================
+  describe('function walletOfOwner', () => {
+    it('should let us know the token ids of a wallet', async () => {
+      await cowsgonemad.pauseStatus("unpause");
+
+      await cowsgonemad.mint(5, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.10", "ether")
+      })
+
+      const tokenIds = (await cowsgonemad.walletOfOwner(accounts[1])).map(id => id.toNumber());
+
+      assert.deepEqual(tokenIds, [1, 2, 3, 4, 5]);      
+    })
+  })
+
+  // =========================
+  // setMaxSupply
+  // =========================
+  describe('function setMaxSupply', () => {
+    it('should let us set the max supply', async () => {
+      await cowsgonemad.setMaxSupply(100);
+      assert.equal(await cowsgonemad.maxSupply(), 100);
+    })
+
+    it('should revert if not called by owner', async () => {
+      await expectRevert(cowsgonemad.setMaxSupply(100, {from: accounts[1]}), `revert AccessControl: account ${accounts[1].toLowerCase()} is missing role ${await cowsgonemad.AUX_ADMIN()}`);
+    })
+
+    it('should revert when supply is locked', async () => {
+      await cowsgonemad.lockSupply();
+
+      await expectRevert(cowsgonemad.setMaxSupply(100), "ERC721: cannot set max supply when supply is locked");
+    })
+
+    it('should revert when new max supply is less than current total supply', async () => {
+      await cowsgonemad.pauseStatus("unpause");
+
+      await cowsgonemad.mint(5, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.10", "ether")
+      })
+
+      await expectRevert(cowsgonemad.setMaxSupply(4), "ERC721: new max supply must be greater than current supply");
+    })
+
+    it('should revert when new max supply is greater than current max supply', async () => {
+      const currentMaxSupply = await cowsgonemad.maxSupply();
+
+      await expectRevert(cowsgonemad.setMaxSupply(currentMaxSupply + 1), "ERC721: new max supply must be less than current supply");
+    })
+  })
 
 });
