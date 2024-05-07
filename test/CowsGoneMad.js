@@ -14,7 +14,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
 
   beforeEach(async () => {
     // cowsgonemad = await CowsGoneMad.deployed();
-    cowsgonemad = await CowsGoneMad.new('Cows Gone Mad', 'CGM', 'https://CGM-baseURI.com/', 'pause', '0x8652d3c05403e6839439915dec1292f5935f0dedfab23ebe6904147a32a96ebf');
+    cowsgonemad = await CowsGoneMad.new('Cows Gone Mad', 'CGM', 'https://CGM-baseURI.com/', true, '0x8652d3c05403e6839439915dec1292f5935f0dedfab23ebe6904147a32a96ebf');
   });
 
   after(async () => {
@@ -37,7 +37,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       const baseURI = 'https://CGM-baseURI.com/';
       const baseExtension = '.json';
     
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
       
       await cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
@@ -50,7 +50,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
 
     it('returns an empty string for a revealed token with no base URI', async function() {
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
 
       const tokenId = 1;
     
@@ -88,11 +88,11 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   describe('function mint', () => {
 
     beforeEach(async () => {
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
     })
     
     it('should let us know the contract is paused', async () => {
-      await cowsgonemad.pauseStatus("pause");
+      await cowsgonemad.pauseStatus(true);
       await expectRevert(cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")
@@ -190,7 +190,6 @@ contract('CowsGoneMad_Mock', async (accounts) => {
 
       // await expectRevert(cowsgonemad.verifyMerkle(merkleProof, accounts[9], 1), 'VM Exception while processing transaction: revert Invalid proof');
       
-      console.log(whitelist[8][1] * await cowsgonemad.whitelistPrice())
       await cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
         from: whitelist[8][0],
         // price is whitelist[8][1] * await cowsgonemad.whitelistPrice()
@@ -199,8 +198,6 @@ contract('CowsGoneMad_Mock', async (accounts) => {
 
       const userBalance = await cowsgonemad.balanceOf(whitelist[8][0]);
 
-      console.log(userBalance.toString())
-      console.log(whitelist[8][1])
       assert.equal(userBalance.toString(), whitelist[2][1]);
     })
   });
@@ -214,7 +211,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
 
     it('should give us a pause state of false', async () => {
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
       assert.equal(await cowsgonemad.paused.call(), false);
     });
   });
@@ -398,7 +395,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function burn', () => {
     it('should let us burn a token', async () => {
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
 
       await cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
@@ -411,7 +408,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
 
     it('should revert if not called by owner or approved', async () => {
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
   
       await cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
@@ -430,7 +427,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function walletOfOwner', () => {
     it('should let us know the token ids of a wallet', async () => {
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
 
       await cowsgonemad.mint(5, accounts[1], {
         from: accounts[1],
@@ -463,7 +460,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     })
 
     it('should revert when new max supply is less than current total supply', async () => {
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
 
       await cowsgonemad.mint(5, accounts[1], {
         from: accounts[1],
@@ -485,7 +482,7 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function withdraw', () => {
     it('should let us withdraw balance from contract', async () => {
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
 
       await cowsgonemad.mint(5, accounts[1], {
         from: accounts[1],
@@ -512,12 +509,5 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     it('should let us know if ERC721 interface is supported', async () => {
       assert.equal(await cowsgonemad.supportsInterface("0x80ac58cd"), true);
     })
-  })
-
-  // =========================
-  // pauseStatus
-  // =========================
-  describe('function pauseStatus', () => {
-    
   })
 });

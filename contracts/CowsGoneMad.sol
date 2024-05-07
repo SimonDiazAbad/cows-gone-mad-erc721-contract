@@ -46,7 +46,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   event SetBaseURI(string _newBaseURI, address _admin);
   event SetBaseExtension(string _newBaseExtension, address _admin);
   event SetMaxSupply(uint256 _newMaxSupply, address _admin);
-  event Pause(string _status, address _admin);
+  event Pause(bool _status, address _admin);
   event SetWhitelistPrice(uint256 _newPrice, address _admin);
   event LockSupply(bool _status, address _admin);
   event Mint(uint16 _mintAmount, uint256 _price, address _user);
@@ -58,7 +58,7 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
     string memory _name,
     string memory _symbol,
     string memory _initBaseURI,
-    string memory _initPause,
+    bool _initPause,
     bytes32 _merkleRoot
   ) ERC721(_name, _symbol)
   {
@@ -323,19 +323,17 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
         : "";
   }
 
-  function pauseStatus(string memory _state) public
+  function pauseStatus(bool _state) public
   onlyRole(AUX_ADMIN) onlyRole(DEFAULT_ADMIN_ROLE)
   {
-    if (keccak256(abi.encodePacked(_state)) == keccak256(abi.encodePacked("pause")))
-    {
+    //change this to bool
+    if (_state) {
       _pause();
       emit Pause(_state, msg.sender);
-    }
-    else if (keccak256(abi.encodePacked(_state)) == keccak256(abi.encodePacked("unpause")))
-    {
+    }  else {
       _unpause();
       emit Pause(_state, msg.sender);
-    } 
+    }
   }
   
   function setBaseURI(string memory _newBaseURI) public
