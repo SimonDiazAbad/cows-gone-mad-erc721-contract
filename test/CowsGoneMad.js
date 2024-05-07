@@ -480,4 +480,44 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     })
   })
 
+  // =========================
+  // withdraw
+  // =========================
+  describe('function withdraw', () => {
+    it('should let us withdraw balance from contract', async () => {
+      await cowsgonemad.pauseStatus("unpause");
+
+      await cowsgonemad.mint(5, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.10", "ether")
+      });
+
+      const balanceBefore = await web3.eth.getBalance(accounts[0]);
+      await cowsgonemad.withdraw({from: accounts[0]});
+      const balanceAfter = await web3.eth.getBalance(accounts[0]);
+      const balanceDiff = String(balanceAfter - balanceBefore);
+
+      assert.closeTo(
+        Number(web3.utils.fromWei(balanceDiff, "ether")),
+        0.10,
+        1.01
+      )
+    })
+  })
+
+  // =========================
+  // supportsInterface
+  // =========================
+  describe('function supportsInterface', () => {
+    it('should let us know if ERC721 interface is supported', async () => {
+      assert.equal(await cowsgonemad.supportsInterface("0x80ac58cd"), true);
+    })
+  })
+
+  // =========================
+  // pauseStatus
+  // =========================
+  describe('function pauseStatus', () => {
+    
+  })
 });
