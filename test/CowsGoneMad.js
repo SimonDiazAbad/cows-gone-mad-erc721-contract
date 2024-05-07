@@ -132,6 +132,15 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       }), "caller is not token owner or approved")
     })
 
+    it('should revert when max supply is reached', async () => {
+      await cowsgonemad.setMaxSupply(1);
+
+      await expectRevert(cowsgonemad.mint(2, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.02", "ether")
+      }), 'Max NFT limit exceeded');
+    })
+
     it('should mint when msg.sender is approvedForAll', async () => {;
 
       await cowsgonemad.setApprovalForAll(accounts[3], true, {
@@ -146,22 +155,70 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       assert.equal(await cowsgonemad.balanceOf(accounts[2]), 1);
     })
 
-    it('should revert when over max founder mint', async () => {;
+    it('should be able to owner mint', async () => {
+      await cowsgonemad.mint(1, accounts[0], {
+        from: accounts[0],
+      });
 
-      const maxFounderMint = await cowsgonemad.maxFounderMintAmount();
-      await cowsgonemad.setFounderNftLimit(maxFounderMint * 2);
+      assert.equal(await cowsgonemad.balanceOf(accounts[0]), 1);
+    })
+
+    it('should be able to founder mint', async () => {
 
       await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
 
-      for(let i = 0; i < 2; i++) {
-        await cowsgonemad.mint(100, accounts[2], {
-          from: accounts[2],
-        });
-      }
+      await cowsgonemad.mint(1, accounts[2], {
+        from: accounts[2],
+      });
 
-      await expectRevert(cowsgonemad.mint(1, accounts[2], {
+      assert.equal(await cowsgonemad.balanceOf(accounts[2]), 1);
+    })
+
+    it('should revert when over max founder mint', async () => {;
+      await cowsgonemad.setMaxFounderMintAmount(1);
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
+
+      await expectRevert(cowsgonemad.mint(2, accounts[2], {
         from: accounts[2],
       }), 'Max founder mint amount exceeded');
+    })
+
+    it('should revert when over max founder mint per address', async () => {
+      const founderNftPerAddressLimit = await cowsgonemad.founderNftPerAddressLimit();
+
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
+
+      await expectRevert(cowsgonemad.mint(founderNftPerAddressLimit + 1, accounts[2], {
+        from: accounts[2],
+      }), 'Founder address NFT limit reached');
+    })
+
+    it('should revert when owner reaches ownerNftLimit', async () => {
+
+      const ownerNftLimit = await cowsgonemad.ownerNftLimit();
+
+      await cowsgonemad.setMaxMintAmount(ownerNftLimit + 2);
+
+      await expectRevert(cowsgonemad.mint(ownerNftLimit + 1, accounts[0], {
+        from: accounts[0],
+      }), 'Owner Nft limit has been reached')
+    })
+
+    it('should revert when user reaches nftPerAddressLimit', async () => {
+      await cowsgonemad.setNftPerAddressLimit(1);
+
+      await expectRevert(cowsgonemad.mint(3, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.06", "ether")
+      }), 'This address has reached its NFT limit')
+    })
+
+    it('should revert on insufficient amount', async () => {
+      await expectRevert(cowsgonemad.mint(1, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.01", "ether")
+      }), 'Insufficient funds');
+
     })
 
     it('should revert when over ownerNftLimit', async () => {;
@@ -591,6 +648,16 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   describe('function supportsInterface', () => {
     it('should let us know if ERC721 interface is supported', async () => {
       assert.equal(await cowsgonemad.supportsInterface("0x80ac58cd"), true);
+    })
+  })
+
+  // =========================
+  // setFounderNftLimit
+  // =========================
+  describe('function setFounderNftLimit', () => {
+    it('should show us a limit of 5', async () => {
+      await cowsgonemad.setFounderNftLimit(5);
+      assert.equal(await cowsgonemad.founderNftPerAddressLimit(), 5);
     })
   })
 });

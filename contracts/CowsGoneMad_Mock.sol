@@ -40,4 +40,8 @@ contract CowsGoneMad_Mock is CowsGoneMad {
   function revealedToFalse() external {
     revealed = false;
   }
+
+  function setMaxFounderMintAmount(uint32 _maxMintAmount) external {
+    maxFounderMintAmount = _maxMintAmount;
+  }
 }
