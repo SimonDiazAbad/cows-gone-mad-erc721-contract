@@ -169,21 +169,25 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       }
 
       const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
-      const merkleProof = findMerkleProof('test_tree.json', accounts[2]);
+      const merkleProof = findMerkleProof('test_tree.json', accounts[8]);
 
       await cowsgonemad.setMerkleRoot(merkleRoot);
       await cowsgonemad.setWhitelistMintingStatus(true);
 
       // await expectRevert(cowsgonemad.verifyMerkle(merkleProof, accounts[9], 1), 'VM Exception while processing transaction: revert Invalid proof');
       
-      console.log(whitelist[2][1] * await cowsgonemad.whitelistPrice())
-      await cowsgonemad.mintWhitelist(whitelist[2][1], merkleProof, {
-        from: whitelist[2][0],
-        // price is whitelist[2][1] * await cowsgonemad.whitelistPrice()
-        value: String(whitelist[2][1] * await cowsgonemad.whitelistPrice())
+      console.log(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      await cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
+        from: whitelist[8][0],
+        // price is whitelist[8][1] * await cowsgonemad.whitelistPrice()
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
       });
 
-      assert.equal(await cowsgonemad.balanceOf(whitelist[2][0]), whitelist[2][1]);
+      const userBalance = await cowsgonemad.balanceOf(whitelist[8][0]);
+
+      console.log(userBalance.toString())
+      console.log(whitelist[8][1])
+      assert.equal(userBalance.toString(), whitelist[2][1]);
     })
   });
 
