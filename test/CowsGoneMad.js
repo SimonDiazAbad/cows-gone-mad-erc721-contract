@@ -192,13 +192,89 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       
       await cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
         from: whitelist[8][0],
-        // price is whitelist[8][1] * await cowsgonemad.whitelistPrice()
         value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
       });
 
       const userBalance = await cowsgonemad.balanceOf(whitelist[8][0]);
 
       assert.equal(userBalance.toString(), whitelist[2][1]);
+    })
+
+    it('should revert when whitelist minting is not active', async () => {
+      await cowsgonemad.setWhitelistMintingStatus(false);
+
+      await expectRevert(cowsgonemad.mintWhitelist(1, [], {
+        from: accounts[0],
+        value: web3.utils.toWei("0.01", "ether")
+      }), "Whitelist minting is not active");
+    })
+
+    it('should revert when user already claimed', async () => {
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[8]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+      await cowsgonemad.setWhitelistMintingStatus(true);
+
+      await cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
+        from: whitelist[8][0],
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      });
+
+      await expectRevert(cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
+        from: whitelist[8][0],
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      }), 'Already claimed')
+    })
+
+    it('should revert on insufficient funds', async () => {
+      await cowsgonemad.setWhitelistMintingStatus(true);
+
+      await expectRevert(cowsgonemad.mintWhitelist(1, [], {
+        from: accounts[0],
+      }), 'Insufficient funds');
+    })
+
+    it('should revert when max supply is reached', async () => {
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 3]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[8]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+      await cowsgonemad.setWhitelistMintingStatus(true);
+      await cowsgonemad.setMaxSupply(1);
+
+      await expectRevert(cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
+        from: whitelist[8][0],
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      }), "Max NFT limit exceeded");
+    })
+
+    it('should revert on invalid merkle proof', async () => {
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[8]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+      await cowsgonemad.setWhitelistMintingStatus(true);
+
+      await expectRevert(cowsgonemad.mintWhitelist(whitelist[8][1], [], {
+        from: whitelist[8][0],
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      }), "Invalid proof");
     })
   });
 
@@ -437,6 +513,13 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       const tokenIds = (await cowsgonemad.walletOfOwner(accounts[1])).map(id => id.toNumber());
 
       assert.deepEqual(tokenIds, [1, 2, 3, 4, 5]);      
+    })
+
+    it('should revert if wallet is 0x0', async () => {
+      await expectRevert(
+        cowsgonemad.walletOfOwner('0x0000000000000000000000000000000000000000'),
+        "walletOfOwner: Invalid zero address."
+      );
     })
   })
 
