@@ -297,12 +297,12 @@ contract CowsGoneMad is ERC721Enumerable, Pausable, AccessControl, ReentrancyGua
   }
 
   // This will payout the owner 100% of the contract balance.
-  function withdraw() external payable nonReentrant()
+  function withdrawAmount(uint256 amount) external payable nonReentrant()
   onlyRole(DEFAULT_ADMIN_ROLE)
   {
     // =============================================================================
-    (bool os, ) = payable(msg.sender).call{value: address(this).balance}("");
-    require(os);
+    (bool os, ) = payable(msg.sender).call{value: amount}("");
+    require(os, "Withdraw failed");
     // =============================================================================
   }
 

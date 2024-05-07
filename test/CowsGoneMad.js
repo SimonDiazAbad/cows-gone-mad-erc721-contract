@@ -629,8 +629,10 @@ contract('CowsGoneMad_Mock', async (accounts) => {
         value: web3.utils.toWei("0.10", "ether")
       });
 
+      const contractBalance = await web3.eth.getBalance(cowsgonemad.address);
+      
       const balanceBefore = await web3.eth.getBalance(accounts[0]);
-      await cowsgonemad.withdraw({from: accounts[0]});
+      await cowsgonemad.withdrawAmount(contractBalance, {from: accounts[0]});
       const balanceAfter = await web3.eth.getBalance(accounts[0]);
       const balanceDiff = String(balanceAfter - balanceBefore);
 
@@ -639,6 +641,16 @@ contract('CowsGoneMad_Mock', async (accounts) => {
         0.10,
         1.01
       )
+    })
+
+    it('should revert if not called by owner', async () => {
+      await expectRevert(cowsgonemad.withdrawAmount(1, {from: accounts[1]}), `revert AccessControl: account ${accounts[1].toLowerCase()} is missing role ${await cowsgonemad.AUX_ADMIN()}`);
+    })
+
+    it('should revert when withdrawing more than the available balance', async () => {
+      const contractBalance = await web3.eth.getBalance(cowsgonemad.address);
+
+      await expectRevert(cowsgonemad.withdrawAmount(contractBalance + 1), "Withdraw failed");
     })
   })
 
