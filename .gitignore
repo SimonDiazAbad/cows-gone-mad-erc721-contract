@@ -4,3 +4,6 @@ coverage
 
 .env
 coverage.json
+
+tree.json
+whitelist.json

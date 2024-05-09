@@ -3,6 +3,9 @@ const {
   expectRevert,
 } = require('@openzeppelin/test-helpers');
 const { web3 } = require('@openzeppelin/test-helpers/src/setup');
+const { createWhitelist } = require('../scripts/merkle-create');
+const { findMerkleProof } = require('../scripts/merkle-proof');
+const fs = require('fs');
 
 const CowsGoneMad = artifacts.require('CowsGoneMad_Mock');
 
@@ -10,8 +13,16 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   let cowsgonemad;
 
   beforeEach(async () => {
-    cowsgonemad = await CowsGoneMad.deployed();
+    // cowsgonemad = await CowsGoneMad.deployed();
+    cowsgonemad = await CowsGoneMad.new('Cows Gone Mad', 'CGM', 'https://CGM-baseURI.com/', true, '0x8652d3c05403e6839439915dec1292f5935f0dedfab23ebe6904147a32a96ebf');
   });
+
+  after(async () => {
+    // we delete the test tree file if it exists
+    if (fs.existsSync('test_tree.json')) {
+      fs.unlinkSync('test_tree.json');
+    }
+  })
 
   // ==========================
   // TokenURI
@@ -21,24 +32,13 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       await expectRevert(cowsgonemad.tokenURI.call(10000), 'ERC721Metadata: URI query for nonexistent token');
     });
   
-    it('should return the notRevealedUri', async () => {
-      const nonRevealedUri = 'https://CGM-NotRevealURI.com/';
-
-      await cowsgonemad.pauseStatus("unpause");
-      await cowsgonemad.mint(1, accounts[1], {
-        from: accounts[1],
-        value: web3.utils.toWei("0.02", "ether")
-      });
-
-      const result = await cowsgonemad.tokenURI.call(1);
-      assert.equal(result, nonRevealedUri);
-    });
-
     it('returns the expected URI for a revealed token with a base URI', async function() {
       const tokenId = 1;
       const baseURI = 'https://CGM-baseURI.com/';
       const baseExtension = '.json';
     
+      await cowsgonemad.pauseStatus(false);
+      
       await cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")
@@ -50,6 +50,8 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
 
     it('returns an empty string for a revealed token with no base URI', async function() {
+      await cowsgonemad.pauseStatus(false);
+
       const tokenId = 1;
     
       await cowsgonemad.mint(1, accounts[1], {
@@ -84,8 +86,13 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // Mint
   // =========================
   describe('function mint', () => {
+
+    beforeEach(async () => {
+      await cowsgonemad.pauseStatus(false);
+    })
+    
     it('should let us know the contract is paused', async () => {
-      await cowsgonemad.pauseStatus("pause");
+      await cowsgonemad.pauseStatus(true);
       await expectRevert(cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")
@@ -94,14 +101,14 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
   
     it('reverts when trying to mint 0 NFTs', async () => {
-      await cowsgonemad.pauseStatus("unpause")
       await expectRevert(cowsgonemad.mint(0, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.02", "ether")
       }), 'You need to mint atleast 1 NFT');
     });
   
-    it('reverts when trying to mint more than maxMintAmount NFTs', async () => {
+    it('reverts when trying to mint more than maxMintAmount NFTs', async () => {;
+
       const maxMintAmount = 100;
       await expectRevert(cowsgonemad.mint(maxMintAmount + 1, accounts[1], {
         from: accounts[1],
@@ -109,12 +116,223 @@ contract('CowsGoneMad_Mock', async (accounts) => {
       }), 'Max mint amount per session exceeded');
     });
 
-    it('should let us know that there are insufficient funds', async () => {
+    it('should let us know that there are insufficient funds', async () => {;
+
       await expectRevert(cowsgonemad.mint(1, accounts[1], {
         from: accounts[1],
         value: web3.utils.toWei("0.00", "ether")
       }), 'Insufficient funds');
     });
+
+    it('should revert when msg.sender is not "to" address or approvedForAll', async () => {;
+      
+      await expectRevert(cowsgonemad.mint(1, accounts[1], {
+        from: accounts[2],
+        value: web3.utils.toWei("0.02", "ether")
+      }), "caller is not token owner or approved")
+    })
+
+    it('should revert when max supply is reached', async () => {
+      await cowsgonemad.setMaxSupply(1);
+
+      await expectRevert(cowsgonemad.mint(2, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.02", "ether")
+      }), 'Max NFT limit exceeded');
+    })
+
+    it('should mint when msg.sender is approvedForAll', async () => {;
+
+      await cowsgonemad.setApprovalForAll(accounts[3], true, {
+        from: accounts[2]
+      });
+
+      await cowsgonemad.mint(1, accounts[2], {
+        from: accounts[3],
+        value: web3.utils.toWei("0.02", "ether")
+      });
+
+      assert.equal(await cowsgonemad.balanceOf(accounts[2]), 1);
+    })
+
+    it('should be able to owner mint', async () => {
+      await cowsgonemad.mint(1, accounts[0], {
+        from: accounts[0],
+      });
+
+      assert.equal(await cowsgonemad.balanceOf(accounts[0]), 1);
+    })
+
+    it('should be able to founder mint', async () => {
+
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
+
+      await cowsgonemad.mint(1, accounts[2], {
+        from: accounts[2],
+      });
+
+      assert.equal(await cowsgonemad.balanceOf(accounts[2]), 1);
+    })
+
+    it('should revert when over max founder mint', async () => {;
+      await cowsgonemad.setMaxFounderMintAmount(1);
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
+
+      await expectRevert(cowsgonemad.mint(2, accounts[2], {
+        from: accounts[2],
+      }), 'Max founder mint amount exceeded');
+    })
+
+    it('should revert when over max founder mint per address', async () => {
+      const founderNftPerAddressLimit = await cowsgonemad.founderNftPerAddressLimit();
+
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
+
+      await expectRevert(cowsgonemad.mint(founderNftPerAddressLimit + 1, accounts[2], {
+        from: accounts[2],
+      }), 'Founder address NFT limit reached');
+    })
+
+    it('should revert when owner reaches ownerNftLimit', async () => {
+
+      const ownerNftLimit = await cowsgonemad.ownerNftLimit();
+
+      await cowsgonemad.setMaxMintAmount(ownerNftLimit + 2);
+
+      await expectRevert(cowsgonemad.mint(ownerNftLimit + 1, accounts[0], {
+        from: accounts[0],
+      }), 'Owner Nft limit has been reached')
+    })
+
+    it('should revert when user reaches nftPerAddressLimit', async () => {
+      await cowsgonemad.setNftPerAddressLimit(1);
+
+      await expectRevert(cowsgonemad.mint(3, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.06", "ether")
+      }), 'This address has reached its NFT limit')
+    })
+
+    it('should revert on insufficient amount', async () => {
+      await expectRevert(cowsgonemad.mint(1, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.01", "ether")
+      }), 'Insufficient funds');
+
+    })
+
+    it('should revert when over ownerNftLimit', async () => {;
+
+      const ownerNftLimit = await cowsgonemad.ownerNftLimit();
+
+      await cowsgonemad.setMaxMintAmount(ownerNftLimit + 1);
+
+      await expectRevert(cowsgonemad.mint(ownerNftLimit + 1, accounts[0], {
+        from: accounts[0],
+      }), 'Owner Nft limit has been reached')
+    })
+
+    it('should mint for whitelist users', async () => {;
+
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[8]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+      await cowsgonemad.setWhitelistMintingStatus(true);
+
+      // await expectRevert(cowsgonemad.verifyMerkle(merkleProof, accounts[9], 1), 'VM Exception while processing transaction: revert Invalid proof');
+      
+      await cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
+        from: whitelist[8][0],
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      });
+
+      const userBalance = await cowsgonemad.balanceOf(whitelist[8][0]);
+
+      assert.equal(userBalance.toString(), whitelist[2][1]);
+    })
+
+    it('should revert when whitelist minting is not active', async () => {
+      await cowsgonemad.setWhitelistMintingStatus(false);
+
+      await expectRevert(cowsgonemad.mintWhitelist(1, [], {
+        from: accounts[0],
+        value: web3.utils.toWei("0.01", "ether")
+      }), "Whitelist minting is not active");
+    })
+
+    it('should revert when user already claimed', async () => {
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[8]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+      await cowsgonemad.setWhitelistMintingStatus(true);
+
+      await cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
+        from: whitelist[8][0],
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      });
+
+      await expectRevert(cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
+        from: whitelist[8][0],
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      }), 'Already claimed')
+    })
+
+    it('should revert on insufficient funds', async () => {
+      await cowsgonemad.setWhitelistMintingStatus(true);
+
+      await expectRevert(cowsgonemad.mintWhitelist(1, [], {
+        from: accounts[0],
+      }), 'Insufficient funds');
+    })
+
+    it('should revert when max supply is reached', async () => {
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 3]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[8]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+      await cowsgonemad.setWhitelistMintingStatus(true);
+      await cowsgonemad.setMaxSupply(1);
+
+      await expectRevert(cowsgonemad.mintWhitelist(whitelist[8][1], merkleProof, {
+        from: whitelist[8][0],
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      }), "Max NFT limit exceeded");
+    })
+
+    it('should revert on invalid merkle proof', async () => {
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[8]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+      await cowsgonemad.setWhitelistMintingStatus(true);
+
+      await expectRevert(cowsgonemad.mintWhitelist(whitelist[8][1], [], {
+        from: whitelist[8][0],
+        value: String(whitelist[8][1] * await cowsgonemad.whitelistPrice())
+      }), "Invalid proof");
+    })
   });
 
   // ==========================
@@ -122,12 +340,11 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // ==========================
   describe('function pause', () => {
     it('should give us a pause state of true', async () => {
-      await cowsgonemad.pauseStatus("pause");
       assert.equal(await cowsgonemad.paused.call(), true);
     });
 
     it('should give us a pause state of false', async () => {
-      await cowsgonemad.pauseStatus("unpause");
+      await cowsgonemad.pauseStatus(false);
       assert.equal(await cowsgonemad.paused.call(), false);
     });
   });
@@ -137,13 +354,13 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function addFounders', () => {
     it('should return false', async () => {
-      await cowsgonemad.addFounders([accounts[2]]);
-      assert.equal(await cowsgonemad.isFounder.call(accounts[1]), false);
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
+      assert.equal(await cowsgonemad.hasRole(await cowsgonemad.FOUNDER_ROLE(), accounts[1]), false);
     });
 
     it('should return true', async () => {
-      await cowsgonemad.addFounders([accounts[3]]);
-      assert.equal(await cowsgonemad.isFounder(accounts[3]), true);
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2], { from: accounts[0] });
+      assert.equal(await cowsgonemad.hasRole(await cowsgonemad.FOUNDER_ROLE(), accounts[2]), true);
     });
   });
 
@@ -152,9 +369,9 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function removeFounders', () => {
     it('should return false', async () => {
-      await cowsgonemad.addFounders([accounts[4]]);
-      await cowsgonemad.removeFounders([accounts[4]]);
-      assert.equal(await cowsgonemad.isFounder.call(accounts[4]), false);
+      await cowsgonemad.grantRole(await cowsgonemad.FOUNDER_ROLE(), accounts[4], { from: accounts[0] });
+      await cowsgonemad.revokeRole(await cowsgonemad.FOUNDER_ROLE(), accounts[4], { from: accounts[0] });
+      assert.equal(await cowsgonemad.hasRole(await cowsgonemad.FOUNDER_ROLE(), accounts[4]), false);
     });
   });
 
@@ -163,24 +380,34 @@ contract('CowsGoneMad_Mock', async (accounts) => {
   // =========================
   describe('function whitelistUsers', () => {
     it('should return false', async () => {
-      await cowsgonemad.whitelistUsers([accounts[9]]);
-      assert.equal(await cowsgonemad.isWhitelisted.call(accounts[1]), false);
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
+
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[1]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+
+      // await expectRevert(cowsgonemad.verifyMerkle(merkleProof, accounts[9], 1), 'VM Exception while processing transaction: revert Invalid proof');
+      
+      assert.equal(await cowsgonemad.verifyMerkle(merkleProof, accounts[9], 1), false);
+
     });
 
-    it('should return false', async () => {
-      await cowsgonemad.whitelistUsers([accounts[8]]);
-      assert.equal(await cowsgonemad.isWhitelisted(accounts[8]), true);
-    });
-  });
+    it('should return true', async () => {
+      let whitelist = [];
+      for (let i = 0; i < 9; i++) {
+        whitelist.push([accounts[i], 1]);
+      }
 
-  // =========================
-  // RemoveWhitelistUsers
-  // =========================
-  describe('function removeWhitelistUsers', () => {
-    it('should return false', async () => {
-      await cowsgonemad.whitelistUsers([accounts[9]]);
-      await cowsgonemad.removeWhitelistedUsers([accounts[9]]);
-      assert.equal(await cowsgonemad.isWhitelisted.call(accounts[9]), false);
+      const merkleRoot = createWhitelist(whitelist, 'test_tree.json');
+      const merkleProof = findMerkleProof('test_tree.json', accounts[1]);
+
+      await cowsgonemad.setMerkleRoot(merkleRoot);
+
+      assert.equal(await cowsgonemad.verifyMerkle(merkleProof, whitelist[1][0], whitelist[1][1]), true);
     });
   });
 
@@ -296,4 +523,153 @@ contract('CowsGoneMad_Mock', async (accounts) => {
     });
   });
 
+  // =========================
+  // Burn
+  // =========================
+  describe('function burn', () => {
+    it('should let us burn a token', async () => {
+      await cowsgonemad.pauseStatus(false);
+
+      await cowsgonemad.mint(1, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.02", "ether")
+      });
+
+      await cowsgonemad.burn(1, {from: accounts[1]});
+
+      assert.equal(await cowsgonemad.balanceOf(accounts[1]), 0);
+    });
+
+    it('should revert if not called by owner or approved', async () => {
+      await cowsgonemad.pauseStatus(false);
+  
+      await cowsgonemad.mint(1, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.02", "ether")
+      });
+  
+      await expectRevert(
+        cowsgonemad.burn(1, {from: accounts[0]}),
+        "ERC721: caller is not token owner or approved"
+      );
+    })
+  })
+
+  // =========================
+  // walletOfOwner
+  // =========================
+  describe('function walletOfOwner', () => {
+    it('should let us know the token ids of a wallet', async () => {
+      await cowsgonemad.pauseStatus(false);
+
+      await cowsgonemad.mint(5, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.10", "ether")
+      })
+
+      const tokenIds = (await cowsgonemad.walletOfOwner(accounts[1])).map(id => id.toNumber());
+
+      assert.deepEqual(tokenIds, [1, 2, 3, 4, 5]);      
+    })
+
+    it('should revert if wallet is 0x0', async () => {
+      await expectRevert(
+        cowsgonemad.walletOfOwner('0x0000000000000000000000000000000000000000'),
+        "walletOfOwner: Invalid zero address."
+      );
+    })
+  })
+
+  // =========================
+  // setMaxSupply
+  // =========================
+  describe('function setMaxSupply', () => {
+    it('should let us set the max supply', async () => {
+      await cowsgonemad.setMaxSupply(100);
+      assert.equal(await cowsgonemad.maxSupply(), 100);
+    })
+
+    it('should revert if not called by owner', async () => {
+      await expectRevert(cowsgonemad.setMaxSupply(100, {from: accounts[1]}), `revert AccessControl: account ${accounts[1].toLowerCase()} is missing role ${await cowsgonemad.AUX_ADMIN()}`);
+    })
+
+    it('should revert when supply is locked', async () => {
+      await cowsgonemad.lockSupply();
+
+      await expectRevert(cowsgonemad.setMaxSupply(100), "ERC721: cannot set max supply when supply is locked");
+    })
+
+    it('should revert when new max supply is less than current total supply', async () => {
+      await cowsgonemad.pauseStatus(false);
+
+      await cowsgonemad.mint(5, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.10", "ether")
+      })
+
+      await expectRevert(cowsgonemad.setMaxSupply(4), "ERC721: new max supply must be greater than current supply");
+    })
+
+    it('should revert when new max supply is greater than current max supply', async () => {
+      const currentMaxSupply = await cowsgonemad.maxSupply();
+
+      await expectRevert(cowsgonemad.setMaxSupply(currentMaxSupply + 1), "ERC721: new max supply must be less than current supply");
+    })
+  })
+
+  // =========================
+  // withdraw
+  // =========================
+  describe('function withdraw', () => {
+    it('should let us withdraw balance from contract', async () => {
+      await cowsgonemad.pauseStatus(false);
+
+      await cowsgonemad.mint(5, accounts[1], {
+        from: accounts[1],
+        value: web3.utils.toWei("0.10", "ether")
+      });
+
+      const contractBalance = await web3.eth.getBalance(cowsgonemad.address);
+      
+      const balanceBefore = await web3.eth.getBalance(accounts[0]);
+      await cowsgonemad.withdrawAmount(contractBalance, {from: accounts[0]});
+      const balanceAfter = await web3.eth.getBalance(accounts[0]);
+      const balanceDiff = String(balanceAfter - balanceBefore);
+
+      assert.closeTo(
+        Number(web3.utils.fromWei(balanceDiff, "ether")),
+        0.10,
+        1.01
+      )
+    })
+
+    it('should revert if not called by owner', async () => {
+      await expectRevert(cowsgonemad.withdrawAmount(1, {from: accounts[1]}), `revert AccessControl: account ${accounts[1].toLowerCase()} is missing role ${await cowsgonemad.AUX_ADMIN()}`);
+    })
+
+    it('should revert when withdrawing more than the available balance', async () => {
+      const contractBalance = await web3.eth.getBalance(cowsgonemad.address);
+
+      await expectRevert(cowsgonemad.withdrawAmount(contractBalance + 1), "Withdraw failed");
+    })
+  })
+
+  // =========================
+  // supportsInterface
+  // =========================
+  describe('function supportsInterface', () => {
+    it('should let us know if ERC721 interface is supported', async () => {
+      assert.equal(await cowsgonemad.supportsInterface("0x80ac58cd"), true);
+    })
+  })
+
+  // =========================
+  // setFounderNftLimit
+  // =========================
+  describe('function setFounderNftLimit', () => {
+    it('should show us a limit of 5', async () => {
+      await cowsgonemad.setFounderNftLimit(5);
+      assert.equal(await cowsgonemad.founderNftPerAddressLimit(), 5);
+    })
+  })
 });

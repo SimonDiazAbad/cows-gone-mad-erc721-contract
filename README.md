@@ -78,3 +78,23 @@ POLYGON_MAINNET=...
 $ truffle migrate --network mumbai
 $ truffle migrate --network polygon
 ```
+
+## Merkle Tree Scripts
+The Merkle Tree scripts allow users to create and verify Merkle trees from a whitelist of addresses and quantities.
+
+```
+# Install Dependencies
+$ npm install
+
+# Create Merkle Tree
+$ node create-tree.js
+
+# Verify Merkle Tree
+$ node verify-tree.js
+```
+
+### Create Merkle Tree
+The create-tree.js script creates a Merkle tree from a whitelist of addresses and quantities.
+
+### Verify Merkle Tree
+The verify-tree.js script loads a pre-existing Merkle tree from a file named tree.json and verifies a specific address against the tree.

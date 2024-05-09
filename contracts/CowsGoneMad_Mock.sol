@@ -10,14 +10,15 @@ contract CowsGoneMad_Mock is CowsGoneMad {
     string memory _name,
     string memory _symbol,
     string memory _initBaseURI,
-    string memory _initNotRevealedUri,
-    string memory _initPause
+    bool _initPause,
+    bytes32 _merkleRoot
+
   ) CowsGoneMad(
     _name,
     _symbol,
     _initBaseURI,
-    _initNotRevealedUri,
-    _initPause
+    _initPause,
+    _merkleRoot
   ) {}
 
   function getNftPerAddressLimit() public view returns (uint256) {
@@ -38,5 +39,9 @@ contract CowsGoneMad_Mock is CowsGoneMad {
 
   function revealedToFalse() external {
     revealed = false;
+  }
+
+  function setMaxFounderMintAmount(uint32 _maxMintAmount) external {
+    maxFounderMintAmount = _maxMintAmount;
   }
 }
